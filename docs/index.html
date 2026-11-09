@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Explore four MPDD interview cases through synchronized video, residual trajectories and precomputed emotion-dynamics descriptors. A static research showcase.">
+<meta name="theme-color" content="#294e5e">
+<link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+<title data-i18n="title">InertiaMPDD · 个体情绪动力学</title>
+<link rel="stylesheet" href="assets/style.css?v=logos-20261109">
+<script src="assets/sample-data.js?v=privacy-71-5s-105-3s-20261109" defer></script>
+<script src="assets/app.js?v=intro-20261109" defer></script>
+</head>
+<body>
+<a class="skip-link" href="#showcase" data-i18n="skip">跳转到样本展示</a>
+<div class="wrap">
+  <header>
+    <div class="intro">
+      <div class="brand"><span class="brand-name">InertiaMPDD</span><span class="edition" data-i18n="edition">交互式样本展示</span></div>
+      <h1 data-i18n="h1">沿着访谈，看见情绪动力学</h1>
+      <p class="sub" data-i18n="sub">将访谈视频与预计算的逐秒残差、特质同步呈现，观察个体轨迹与健康训练参照的关系。</p>
+    </div>
+    <div class="header-right">
+      <div class="header-meta"><span class="research-tag" data-i18n="tag">研究演示 · 非诊断结论</span><button id="langbtn" class="lang-btn" aria-label="Switch language">EN</button></div>
+      <div class="method-visual"><a href="assets/haci.jpg" target="_blank" rel="noopener" title="HACI"><img id="haci-fig" src="assets/haci.jpg" alt="HACI" width="160"></a><img id="sstc-badge" src="assets/sstc.png" alt="SSTC" width="160"></div>
+    </div>
+  </header>
+
+  <details class="about-system">
+    <summary data-i18n="about_title">关于系统与数据口径</summary>
+    <div class="method-steps">
+      <div><span>01</span><h2 data-i18n="method1_title">多模态状态</h2><p data-i18n="method1">由访谈音视频提取状态表示，同一参与者的片段按顺序拼接。</p></div>
+      <div><span>02</span><h2 data-i18n="method2_title">预测与观测</h2><p data-i18n="method2">健康动力学模型预测下一步状态，以预测和观测之间的距离构成逐步残差。</p></div>
+      <div><span>03</span><h2 data-i18n="method3_title">三个互补描述量</h2><p data-i18n="method3">R 描述平均残差；f′ 描述残差 AR 衰减；ρ 描述固定坐标下预测映射的局部谱性质。</p></div>
+    </div>
+    <p data-i18n="protocol_note">本页与论文定性个案采用 O 系列探针链、MPDD young 官方 88/22 划分。论文定量表格采用组内分层 80/20 重训链，两者的健康池统计不能直接等同。71 为官方训练个案；42、89、105 为官方测试个案。</p>
+    <p data-i18n="about_precomputed">浏览器播放已有视频并显示已有数据；播放过程不运行模型。标签用于研究个案说明，不能据此推断测试性能或作出个体诊断。</p>
+  </details>
+
+  <section class="controls" aria-label="Case selection" id="showcase">
+    <div class="select-group"><label for="refselect" data-i18n="select_label">选择参考个案</label><select id="refselect"><option value="" data-i18n="placeholder">选择视频</option></select></div>
+    <span class="interaction-tip" data-i18n="control_tip">播放视频逐步展开曲线，或点击图表跳转时刻。</span>
+    <div id="page-status" role="status" aria-live="polite"></div>
+  </section>
+
+  <main class="main">
+    <aside class="video-column">
+      <section class="card video-card">
+        <div class="section-top"><span class="eyebrow" data-i18n="eyebrow_case">01 / 访谈个案</span><span class="badge" id="labelbadge" data-i18n="loading">载入中</span></div>
+        <video id="player" controls playsinline preload="metadata" aria-label="Case interview video"></video>
+        <div class="playback-strip"><span id="playback-state" class="playback-state" data-i18n="paused">已暂停</span><output id="playback-time">00:00 / 00:00</output></div>
+        <label class="sr-only" for="timeline" data-i18n="paper_time">查看时刻</label><input id="timeline" type="range" min="0" max="1" value="0" step="0.1">
+        <div class="meta-row"><h2 id="case-title" data-i18n="loading_title">正在读取参考数据</h2><p id="metainfo"></p></div>
+        <div class="segments" id="segments" aria-label="Interview segments"></div>
+        <p class="small-note" id="media-note" data-i18n="media_default">参考视频含访谈原音轨。</p>
+      </section>
+      <section class="card guide"><h2 data-i18n="guide_h2">如何阅读这张图</h2><p data-i18n="guide_p">红色线为当前个体；绿色虚线为健康训练参照中位数，绿色阴影为其 5–95% 范围。</p><p class="small-note" data-i18n="guide_tip">点击或拖动曲线可定位视频，方向键每次移动 5 秒。</p><p class="small-note" id="pool-note"></p></section>
+      <section class="card"><h2 data-i18n="compare_h2">对照查看</h2><p class="small-note" data-i18n="compare_p">切换参与者，查看同一口径下的已有个案。</p><div id="case-links" class="case-links"></div></section>
+    </aside>
+
+    <section class="analysis-column" aria-label="Emotion dynamics">
+      <section class="card case-card">
+        <div class="section-top"><div><div class="eyebrow">02 / CASE STUDY</div><h2 data-i18n="analysis_h2">个体轨迹与健康参考</h2></div><label class="toggle"><input id="reveal" type="checkbox" checked><span data-i18n="reveal">仅显示已播放曲线</span></label></div>
+        <div class="legend"><span><i class="line-key subject"></i><span data-i18n="legend_subject">个体残差</span></span><span><i class="line-key reference"></i><span class="reference-label">健康训练中位数</span></span><span><i class="band-key"></i><span class="range-label">健康训练 5–95%</span></span><span><i class="line-key mean"></i><span data-i18n="legend_mean">个体全片均值</span></span></div>
+        <div class="plot-title"><h3 data-i18n="plot_a">(a) 视频帧带</h3><span id="filmstrip-note" data-i18n="film_loading">正在读取预览帧…</span></div>
+        <canvas id="filmstrip" role="img" aria-label="Time-aligned frame strip; click or use arrow keys to seek" tabindex="0"></canvas>
+        <div class="plot-title"><h3 data-i18n="plot_c">(b) 逐步残差</h3><output id="case-readout">—</output></div>
+        <canvas id="case-residual" class="large-canvas" role="img" aria-label="Per-step residual and healthy training reference; click or use arrow keys to seek" tabindex="0"></canvas>
+        <div class="plot-caption"><span id="residual-source"></span><span id="time-readout">00:00</span></div>
+        <div class="window-heading"><h3 data-i18n="window_heading">当前滑窗描述量</h3><span data-i18n="window_note">最长 60 秒窗口 · 演示变体</span></div>
+        <div class="window-grid">
+          <div><span data-i18n="window_r">残差均值 R</span><output id="live-r">—</output></div>
+          <div><span data-i18n="window_f">回复力量 f′</span><output id="live-f">—</output></div>
+          <div><span data-i18n="window_rho">预测映射 ρ</span><output id="live-rho">—</output></div>
+        </div>
+        <p class="small-note" id="window-status"></p>
+      </section>
+
+      <section class="trait-section" aria-label="Full-series traits">
+        <div class="section-top"><div><div class="eyebrow" data-i18n="trait_eyebrow">03 / 全片特质</div><h2 data-i18n="trait_heading">全片情绪动力学描述</h2></div><span class="small-note" data-i18n="trait_subtitle">固定全片值 · 探针链官方划分</span></div>
+        <div class="trait-grid" id="trait-summary"></div>
+        <section id="paper-extra"><h3 data-i18n="paper_extra_h3">全片图形摘要</h3><div id="paper-summary"></div></section>
+      </section>
+      <details class="card diagnostics" open><summary data-i18n="diag_summary">滑窗特质时序与类别分布</summary>
+        <p class="small-note" data-i18n="diag_note">蓝 / 橙：正常 / 抑郁全片值分布；绿带：健康训练全片值 5–95%。滑窗曲线为演示变体。</p>
+        <div class="panel"><div class="plot-title"><h3 data-i18n="panel_residual">残差均值</h3><output id="r0"></output></div><canvas id="c0" role="img" aria-label="Window residual mean" tabindex="0"></canvas></div>
+        <div class="panel"><div class="plot-title"><h3 data-i18n="panel_force">回复力量</h3><output id="r1"></output></div><canvas id="c1" role="img" aria-label="Window AR decay" tabindex="0"></canvas></div>
+        <div class="panel"><div class="plot-title"><h3 data-i18n="panel_rho">预测映射谱半径</h3><output id="r2"></output></div><canvas id="c2" role="img" aria-label="Window predictor spectral descriptor" tabindex="0"></canvas></div>
+        <p class="small-note" data-i18n="diag_note2">R、f′ 按秒更新；ρ 在首个完整窗口后每 5 秒更新。短窗 f′ 可能回退健康先验；ρ 不是情绪恢复率。</p>
+      </details>
+    </section>
+  </main>
+  <footer><p data-i18n="footer">研究演示 · 非诊断结论。仅展示既有 MPDD 个案与预计算结果，数据口径见上方系统介绍。</p></footer>
+</div>
+<noscript>请启用 JavaScript 以浏览同步曲线。 Enable JavaScript to explore the synchronized data.</noscript>
+</body>
+</html>
