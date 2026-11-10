@@ -16,12 +16,17 @@ const I18N = {
     paper_p: "拖动时间滑块或点击图表即可查看对应时刻。", paper_time: "查看时刻",
     media_default: "参考视频含访谈原音轨。",
     guide_h2: "如何阅读这张图",
-    guide_p: "红色线为当前个体；绿色虚线为健康训练参照中位数，绿色阴影为其 5–95% 范围。",
+    guide_p: "（b）绿线为模型预测，红虚线为观测动态；（c）红线为个体残差，绿虚线与阴影为健康训练中位数和 5–95% 参照。",
     guide_tip: "点击或拖动曲线可定位视频，方向键每次移动 5 秒。",
     compare_h2: "对照查看", compare_p: "切换参与者，查看同一口径下的已有个案。",
     eyebrow_case: "01 / 访谈个案", analysis_h2: "个体轨迹与健康参考", reveal: "仅显示已播放曲线",
     legend_subject: "个体残差", legend_mean: "个体全片均值",
-    plot_a: "(a) 视频帧带", plot_c: "(b) 逐步残差",
+    plot_b: "(b) 潜在情绪动态",
+    legend_predicted: "健康动力学模型预测", legend_observed: "观测潜在情绪动态",
+    latent_readout: "t = {0} · 观测 {1} · 预测 {2}",
+    latent_source: "潜状态：健康训练池共同 PC1（解释方差 {0}）。预测已对齐目标时刻；下方残差由全维潜状态计算。",
+    latent_missing: "该样本未提供导出的潜在轨迹。",
+    plot_a: "(a) 视频帧带", plot_c: "(c) 逐步残差",
     trait_eyebrow: "03 / 全片特质", trait_heading: "全片情绪动力学描述", trait_subtitle: "固定全片值 · 探针链官方划分",
     paper_extra_h3: "全片图形摘要",
     diag_summary: "滑窗特质时序与类别分布",
@@ -95,12 +100,17 @@ const I18N = {
     paper_p: "Drag the slider or click a chart to inspect a moment.", paper_time: "Time",
     media_default: "Reference video includes the original interview audio.",
     guide_h2: "How to read this figure",
-    guide_p: "Red: this participant. Green dashed: healthy training median. Green shading: the 5–95% reference range.",
+    guide_p: "(b) Green: model prediction; red dashed: observed dynamics. (c) Red: individual residual; green dashed and shading: healthy training median and 5–95% reference.",
     guide_tip: "Click or drag a chart to seek; arrow keys move by 5 seconds.",
     compare_h2: "Compare cases", compare_p: "Explore another participant under the same protocol.",
     eyebrow_case: "01 / INTERVIEW CASE", analysis_h2: "Individual trajectory vs healthy reference", reveal: "Show only played portion",
     legend_subject: "Individual residual", legend_mean: "Individual full-series mean",
-    plot_a: "(a) Frame strip", plot_c: "(b) Per-step residual",
+    plot_b: "(b) Latent emotion dynamics",
+    legend_predicted: "Healthy-dynamics model prediction", legend_observed: "Observed latent emotion dynamics",
+    latent_readout: "t = {0} · observed {1} · predicted {2}",
+    latent_source: "Latent states: common healthy-training PC1 ({0} variance explained). Predictions align to target time; residuals below use the full latent state.",
+    latent_missing: "No exported latent trajectory for this sample.",
+    plot_a: "(a) Frame strip", plot_c: "(c) Per-step residual",
     trait_eyebrow: "03 / FULL-SERIES TRAITS", trait_heading: "Full-series dynamics descriptors", trait_subtitle: "Fixed full-series values · official probe split",
     paper_extra_h3: "Full-series summary",
     diag_summary: "Window trajectories & class distributions",
@@ -191,6 +201,16 @@ function setLang(next) {
 const TRAITS = ["residual", "force_ar", "rho"];
 const TRAIT_SYMBOL = { residual: "R", force_ar: "f′", rho: "ρ(J)" };
 
+// Shared display scales across participants; scientific values are not normalized.
+const Y_AXES = {
+  "case-latent": { limits: [-15, 15], ticks: [-15, -10, -5, 0, 5, 10, 15], decimals: 0 },
+  "case-residual": { limits: [0, 20], ticks: [0, 5, 10, 15, 20], decimals: 0 },
+  "c0": { limits: [0, 20], ticks: [0, 5, 10, 15, 20], decimals: 0 },
+  "c1": { limits: [0, 2.5], ticks: [0, .5, 1, 1.5, 2, 2.5], decimals: 1 },
+  "c2": { limits: [0, 2], ticks: [0, .5, 1, 1.5, 2], decimals: 1 }
+};
+
+
 const refs = new Map();
 let frameController = null, activeFrames = [];
 let frameTask = Promise.resolve();
@@ -263,7 +283,7 @@ async function init() {
   document.querySelector(".diagnostics").addEventListener("toggle", scheduleDraw);
   new ResizeObserver(scheduleDraw).observe(document.querySelector(".analysis-column"));
   window.addEventListener("resize", scheduleDraw);
-  ["filmstrip", "case-residual", "c0", "c1", "c2"].forEach(id => bindSeek($(id)));
+  ["filmstrip", "case-latent", "case-residual", "c0", "c1", "c2"].forEach(id => bindSeek($(id)));
   const requested = pageURL.searchParams.get("case");
   const first = allCases.find(v => v.key === requested && refs.has(v.sid)) || allCases.find(v => refs.has(v.sid));
   if (first) loadReference(first); else throw new Error(t("no_series"));
@@ -449,8 +469,9 @@ function canvasPlot(canvas, values, { bandWidth = 0, height = 240, transform = v
   if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(height * dpr)) { canvas.width = Math.round(w * dpr); canvas.height = Math.round(height * dpr); }
   canvas.style.height = `${height}px`;
   const ctx = canvas.getContext("2d"); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, w, height);
-  let [lo, hi] = range(values.map(transform));
-  if (yRange && yRange.every(finite) && yRange[0] < yRange[1]) {
+  const axis = Y_AXES[canvas.id];
+  let [lo, hi] = axis ? axis.limits : range(values.map(transform));
+  if (!axis && yRange && yRange.every(finite) && yRange[0] < yRange[1]) {
     // Preserve the paper's display bounds, expanding only if actual data would be clipped.
     const valid = values.filter(finite).map(transform);
     lo = Math.min(yRange[0], ...valid); hi = Math.max(yRange[1], ...valid);
@@ -462,8 +483,9 @@ function canvasPlot(canvas, values, { bandWidth = 0, height = 240, transform = v
   const Y = v => top + (hi - transform(v)) / (hi - lo) * (bottom - top);
   const yCoord = tick => top + (hi - tick) / (hi - lo) * (bottom - top);
   ctx.font = "10px -apple-system, sans-serif"; ctx.fillStyle = css("--muted"); ctx.textAlign = "right"; ctx.textBaseline = "middle";
-  const decimals = Math.min(4, Math.max(0, -Math.floor(Math.log10((hi - lo) / 4)) + 1));
-  for (const tick of niceTicks(lo, hi)) {
+  const decimals = axis?.decimals ?? Math.min(4, Math.max(0, -Math.floor(Math.log10((hi - lo) / 4)) + 1));
+  const yTicks = axis?.ticks || niceTicks(lo, hi);
+  for (const tick of yTicks) {
     const y = yCoord(tick); ctx.strokeStyle = css("--grid"); ctx.lineWidth = .7; ctx.beginPath(); ctx.moveTo(left, y); ctx.lineTo(right, y); ctx.stroke(); ctx.fillText(tick.toFixed(decimals), left - 9, y);
   }
   const step = T <= 200 ? 30 : T <= 400 ? 60 : 120;
@@ -473,7 +495,7 @@ function canvasPlot(canvas, values, { bandWidth = 0, height = 240, transform = v
   ctx.strokeStyle = css("--axis"); ctx.beginPath(); ctx.moveTo(left, top); ctx.lineTo(left, bottom); ctx.lineTo(right, bottom); ctx.stroke();
   chartGeometry.set(canvas, { left, width, T });
   ctx.save(); ctx.beginPath(); ctx.rect(left, top, width, bottom - top); ctx.clip();
-  return { ctx, X, Y, left, right, top, bottom, T, w, height, bandWidth };
+  return { ctx, X, Y, left, right, top, bottom, T, w, height, bandWidth, yLimits: [lo, hi], yTicks };
 }
 function line(g, points, color, { dash = [], alpha = 1, width = 1.5 } = {}) {
   const { ctx, X, Y } = g;
@@ -502,10 +524,45 @@ function finishPlot(g) {
   const xp = Math.max(left, Math.min(right, X(curT)));
   ctx.strokeStyle = "#526e80"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(xp, top); ctx.lineTo(xp, bottom); ctx.stroke(); ctx.restore();
 }
+// Use exported target-time coordinates: pred at t compares with observation at t.
+// Never infer this projected trajectory from the full-dimensional residual.
+function latentPoints(key) {
+  const values = series.case?.[key], times = series.case?.[key + "_time"];
+  if (!Array.isArray(values) || !Array.isArray(times) || values.length !== times.length) return [];
+  return values.map((value, i) => [times[i], value]);
+}
+function drawLatent() {
+  const observed = latentPoints("observed"), predicted = latentPoints("predicted");
+  const values = [...observed, ...predicted].map(point => point[1]);
+  const g = canvasPlot($("case-latent"), values, { height: 220 });
+  if (!g) return;
+  playLine(g, observed, css("--subject"), { dash: [6, 4], width: 1.7 });
+  playLine(g, predicted, css("--hr"), { width: 1.5 });
+  const { ctx, X, Y } = g;
+  // Match the paper's prediction markers, clipped to the current reveal time.
+  ctx.fillStyle = css("--hr");
+  for (const [second, value] of predicted) {
+    if (!finite(second) || !finite(value) || ($("reveal").checked && second > curT)) continue;
+    ctx.beginPath(); ctx.arc(X(second), Y(value), 1.3, 0, Math.PI * 2); ctx.fill();
+  }
+  const second = Math.floor(curT);
+  const obs = observed.find(point => point[0] === second);
+  const pred = predicted.find(point => point[0] === second);
+  for (const [point, color] of [[obs, css("--subject")], [pred, css("--hr")]]) {
+    if (!point || !point.every(finite)) continue;
+    ctx.fillStyle = color; ctx.beginPath(); ctx.arc(X(point[0]), Y(point[1]), 3, 0, Math.PI * 2); ctx.fill();
+  }
+  finishPlot(g);
+  $("latent-readout").textContent = observed.length && predicted.length
+    ? t("latent_readout", time(second), fmt(obs?.[1]), fmt(pred?.[1])) : t("latent_missing");
+  const explained = series.case?.pc1_var_expl;
+  $("latent-source").textContent = observed.length && predicted.length
+    ? t("latent_source", finite(explained) ? (explained * 100).toFixed(1) + "%" : "—") : t("latent_missing");
+}
 function drawResidual() {
   const rows = series.reference || [], values = series.raw.slice();
   rows.forEach(r => { if (r) values.push(r.low, r.high); });
-  const g = canvasPlot($("case-residual"), values, { yRange: series.case?.ylim?.residual || [0, Math.max(12.5, ...values.filter(finite).map(v => v * 1.2))] }); if (!g) return;
+  const g = canvasPlot($("case-residual"), values, {}); if (!g) return;
   const { ctx, X, Y, top, left } = g;
   // Separate contiguous reference runs; never fill missing seconds or extend a short recording.
   let run = [];
@@ -582,7 +639,7 @@ function updateWindowReadout() {
 }
 function draw() {
   if (!series) return;
-  drawFilmstrip(); drawResidual();
+  drawFilmstrip(); drawLatent(); drawResidual();
   $("timeline").value = curT;
   $("playback-time").textContent = `${time(curT)} / ${time(videoDur)}`;
   $("playback-state").textContent = t(player.ended ? "ended" : player.paused ? "paused" : "playing");
