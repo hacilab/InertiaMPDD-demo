@@ -91,3 +91,12 @@ input[type=range]:focus-visible{outline:2px solid #6f94a5;outline-offset:3px}
   .plot-title output{font-size:10px}
 }
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+
+/* Shared-time latent prediction/observation panel. */
+.latent-panel{margin:0 0 22px}
+.latent-legend{margin-bottom:5px}
+.line-key.predicted{border-color:var(--hr)}
+.line-key.observed{border-color:var(--subject);border-top-style:dashed}
+#latent-readout{font-variant-numeric:tabular-nums;text-align:right}
+#latent-source{font-size:10px;margin:5px 0 0}
+@media(max-width:760px){#latent-panel .plot-title{flex-wrap:wrap}#latent-readout{font-size:10px;text-align:left}.latent-legend span{white-space:normal}}

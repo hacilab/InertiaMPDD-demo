@@ -7,9 +7,9 @@
 <meta name="theme-color" content="#294e5e">
 <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
 <title data-i18n="title">InertiaMPDD · 个体情绪动力学</title>
-<link rel="stylesheet" href="assets/style.css?v=logos-20261109">
+<link rel="stylesheet" href="assets/style.css?v=latent-20261110">
 <script src="assets/sample-data.js?v=privacy-71-5s-105-3s-20261109" defer></script>
-<script src="assets/app.js?v=intro-20261109" defer></script>
+<script src="assets/app.js?v=shared-y-20261110" defer></script>
 </head>
 <body>
 <a class="skip-link" href="#showcase" data-i18n="skip">跳转到样本展示</a>
@@ -61,10 +61,16 @@
     <section class="analysis-column" aria-label="Emotion dynamics">
       <section class="card case-card">
         <div class="section-top"><div><div class="eyebrow">02 / CASE STUDY</div><h2 data-i18n="analysis_h2">个体轨迹与健康参考</h2></div><label class="toggle"><input id="reveal" type="checkbox" checked><span data-i18n="reveal">仅显示已播放曲线</span></label></div>
-        <div class="legend"><span><i class="line-key subject"></i><span data-i18n="legend_subject">个体残差</span></span><span><i class="line-key reference"></i><span class="reference-label">健康训练中位数</span></span><span><i class="band-key"></i><span class="range-label">健康训练 5–95%</span></span><span><i class="line-key mean"></i><span data-i18n="legend_mean">个体全片均值</span></span></div>
         <div class="plot-title"><h3 data-i18n="plot_a">(a) 视频帧带</h3><span id="filmstrip-note" data-i18n="film_loading">正在读取预览帧…</span></div>
         <canvas id="filmstrip" role="img" aria-label="Time-aligned frame strip; click or use arrow keys to seek" tabindex="0"></canvas>
-        <div class="plot-title"><h3 data-i18n="plot_c">(b) 逐步残差</h3><output id="case-readout">—</output></div>
+        <section id="latent-panel" class="latent-panel" aria-label="Latent emotion dynamics">
+          <div class="plot-title"><h3 data-i18n="plot_b">(b) 潜在情绪动态</h3><output id="latent-readout">—</output></div>
+          <div class="legend latent-legend"><span><i class="line-key predicted"></i><span data-i18n="legend_predicted">健康动力学模型预测</span></span><span><i class="line-key observed"></i><span data-i18n="legend_observed">观测潜在情绪动态</span></span></div>
+          <canvas id="case-latent" class="large-canvas" role="img" aria-label="Model-predicted and observed latent emotion dynamics on a shared healthy-pool PC1; click or use arrow keys to seek" tabindex="0"></canvas>
+          <p class="small-note" id="latent-source"></p>
+        </section>
+        <div class="plot-title"><h3 data-i18n="plot_c">(c) 逐步残差</h3><output id="case-readout">—</output></div>
+        <div class="legend"><span><i class="line-key subject"></i><span data-i18n="legend_subject">个体残差</span></span><span><i class="line-key reference"></i><span class="reference-label">健康训练中位数</span></span><span><i class="band-key"></i><span class="range-label">健康训练 5–95%</span></span><span><i class="line-key mean"></i><span data-i18n="legend_mean">个体全片均值</span></span></div>
         <canvas id="case-residual" class="large-canvas" role="img" aria-label="Per-step residual and healthy training reference; click or use arrow keys to seek" tabindex="0"></canvas>
         <div class="plot-caption"><span id="residual-source"></span><span id="time-readout">00:00</span></div>
         <div class="window-heading"><h3 data-i18n="window_heading">当前滑窗描述量</h3><span data-i18n="window_note">最长 60 秒窗口 · 演示变体</span></div>
