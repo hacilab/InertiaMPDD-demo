@@ -19,7 +19,7 @@ const I18N = {
     guide_p: "（b）绿线为模型预测，红虚线为观测动态；（c）红线为个体残差，绿虚线与阴影为健康训练中位数和 5–95% 参照。",
     guide_tip: "点击或拖动曲线可定位视频，方向键每次移动 5 秒。",
     compare_h2: "对照查看", compare_p: "切换参与者，查看同一口径下的已有个案。",
-    eyebrow_case: "01 / 访谈个案", analysis_h2: "个体轨迹与健康参考", reveal: "仅显示已播放曲线",
+    eyebrow_case: "01 / 访谈个案", analysis_h2: "个体轨迹与健康参考", reveal: "曲线与参考随播放展开",
     legend_subject: "个体残差", legend_mean: "个体全片均值",
     plot_b: "(b) 潜在情绪动态",
     legend_predicted: "健康动力学模型预测", legend_observed: "观测潜在情绪动态",
@@ -103,7 +103,7 @@ const I18N = {
     guide_p: "(b) Green: model prediction; red dashed: observed dynamics. (c) Red: individual residual; green dashed and shading: healthy training median and 5–95% reference.",
     guide_tip: "Click or drag a chart to seek; arrow keys move by 5 seconds.",
     compare_h2: "Compare cases", compare_p: "Explore another participant under the same protocol.",
-    eyebrow_case: "01 / INTERVIEW CASE", analysis_h2: "Individual trajectory vs healthy reference", reveal: "Show only played portion",
+    eyebrow_case: "01 / INTERVIEW CASE", analysis_h2: "Individual trajectory vs healthy reference", reveal: "Reveal curves and reference with playback",
     legend_subject: "Individual residual", legend_mean: "Individual full-series mean",
     plot_b: "(b) Latent emotion dynamics",
     legend_predicted: "Healthy-dynamics model prediction", legend_observed: "Observed latent emotion dynamics",
@@ -564,6 +564,14 @@ function drawResidual() {
   rows.forEach(r => { if (r) values.push(r.low, r.high); });
   const g = canvasPlot($("case-residual"), values, {}); if (!g) return;
   const { ctx, X, Y, top, left } = g;
+  // Reveal all residual data together at the video cursor, including the reference
+  // band, median and full-series mean. Axes and the cursor remain fully visible.
+  ctx.save();
+  if ($("reveal").checked) {
+    ctx.beginPath();
+    ctx.rect(left, top, Math.max(0, Math.min(g.right, X(curT)) - left), g.bottom - top);
+    ctx.clip();
+  }
   // Separate contiguous reference runs; never fill missing seconds or extend a short recording.
   let run = [];
   function fillRun() {
@@ -574,12 +582,14 @@ function drawResidual() {
   line(g, rows.map(r => r ? [r.t, r.mid] : [null, null]), css("--hr"), { dash: [5, 3], width: 1.3 });
   const mean = series.raw.length ? series.raw.reduce((a, b) => a + b, 0) / series.raw.length : null;
   if (finite(mean)) line(g, [[series.rawTimes[0], mean], [series.rawTimes[series.rawTimes.length - 1], mean]], "#8b979f", { dash: [2, 4], width: 1 });
-  playLine(g, series.raw.map((v, i) => [series.rawTimes[i], v]), css("--subject"));
+  // Canvas clipping progressively reveals each connecting segment between 1 Hz samples.
+  line(g, series.raw.map((v, i) => [series.rawTimes[i], v]), css("--subject"));
   let i = -1; for (let j = 0; j < series.rawTimes.length; j++) if (series.rawTimes[j] <= curT) i = j;
   const v = series.raw[i];
   if (finite(v) && curT <= series.T) {
     ctx.fillStyle = css("--subject"); ctx.beginPath(); ctx.arc(X(series.rawTimes[i]), Y(v), 3, 0, Math.PI * 2); ctx.fill();
   }
+  ctx.restore();
   if (!series.raw.length) { ctx.fillStyle = css("--muted"); ctx.textAlign = "left"; ctx.fillText(t("readout_none"), left + 10, top + 20); }
   finishPlot(g);
   $("case-readout").textContent = curT > series.T ? (currentVideo?.mode === "paper" ? t("readout_paper_end") : t("readout_beyond")) : finite(v) ? `t = ${time(series.rawTimes[i])} · r = ${fmt(v)}` : t("readout_prompt");
